@@ -59,39 +59,31 @@
          everything inheriting no-drag from it — subtract from the drag region,
          making the titlebar undraggable on any workspace with a long scrolled
          conversation. Scope no-drag to surfaces that host a drag overlay
-         (TitlebarDragRegion) and to floating layers that can overlap one. */
-      :has(> [data-paseo-drag-overlay]) button,
-      :has(> [data-paseo-drag-overlay]) a,
-      :has(> [data-paseo-drag-overlay]) input,
-      :has(> [data-paseo-drag-overlay]) textarea,
-      :has(> [data-paseo-drag-overlay]) select,
-      :has(> [data-paseo-drag-overlay]) [role="button"],
-      :has(> [data-paseo-drag-overlay]) [role="link"],
-      :has(> [data-paseo-drag-overlay]) [role="textbox"],
-      :has(> [data-paseo-drag-overlay]) [role="combobox"],
-      :has(> [data-paseo-drag-overlay]) [role="tab"],
-      :has(> [data-paseo-drag-overlay]) [role="switch"],
-      :has(> [data-paseo-drag-overlay]) [role="checkbox"],
-      :has(> [data-paseo-drag-overlay]) [role="slider"],
-      :has(> [data-paseo-drag-overlay]) [role="menuitem"],
-      :has(> [data-paseo-drag-overlay]) [tabindex],
-      :has(> [data-paseo-drag-overlay]) [contenteditable="true"],
-      [data-paseo-no-drag-scope] button,
-      [data-paseo-no-drag-scope] a,
-      [data-paseo-no-drag-scope] input,
-      [data-paseo-no-drag-scope] textarea,
-      [data-paseo-no-drag-scope] select,
-      [data-paseo-no-drag-scope] [role="button"],
-      [data-paseo-no-drag-scope] [role="link"],
-      [data-paseo-no-drag-scope] [role="textbox"],
-      [data-paseo-no-drag-scope] [role="combobox"],
-      [data-paseo-no-drag-scope] [role="tab"],
-      [data-paseo-no-drag-scope] [role="switch"],
-      [data-paseo-no-drag-scope] [role="checkbox"],
-      [data-paseo-no-drag-scope] [role="slider"],
-      [data-paseo-no-drag-scope] [role="menuitem"],
-      [data-paseo-no-drag-scope] [tabindex],
-      [data-paseo-no-drag-scope] [contenteditable="true"] {
+         (TitlebarDragRegion) and to floating layers that can overlap one. A
+         scope element matches itself too: a marked control with no
+         descendants (the sidebar resize handle) is the thing to protect. */
+      :is(
+        :has(> [data-paseo-drag-overlay]) *,
+        [data-paseo-no-drag-scope],
+        [data-paseo-no-drag-scope] *
+      ):is(
+        button,
+        a,
+        input,
+        textarea,
+        select,
+        [role="button"],
+        [role="link"],
+        [role="textbox"],
+        [role="combobox"],
+        [role="tab"],
+        [role="switch"],
+        [role="checkbox"],
+        [role="slider"],
+        [role="menuitem"],
+        [tabindex],
+        [contenteditable="true"]
+      ) {
         -webkit-app-region: no-drag !important;
       }
 

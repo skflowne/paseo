@@ -80,6 +80,7 @@ const floatingLayerStyle = { position: "fixed", top: 0, left: 500 } as const;
 const surfaceTabStyle = { width: 120, height: 28 } as const;
 const scrolledItemStyle = { width: 600, height: 3000 } as const;
 const floatingItemStyle = { width: 80, height: 24 } as const;
+const scopedHandleStyle = { position: "fixed", top: 0, left: 560, width: 8, height: 36 } as const;
 
 function Scenario() {
   return (
@@ -101,11 +102,18 @@ function Scenario() {
         </div>
       </div>
       {/* Floating layer that can overlap a strip */}
-      <div data-paseo-no-drag-scope="true" style={floatingLayerStyle}>
+      <div data-paseo-no-drag-scope="true" data-testid="floating-layer" style={floatingLayerStyle}>
         <button type="button" data-testid="floating-item" style={floatingItemStyle}>
           Menu
         </button>
       </div>
+      {/* Marked control with no descendants, like the sidebar resize handle */}
+      <div
+        data-paseo-no-drag-scope="true"
+        tabIndex={0}
+        data-testid="scoped-handle"
+        style={scopedHandleStyle}
+      />
     </>
   );
 }
@@ -185,6 +193,15 @@ describe("TitlebarDragRegion draggable-region cascade", () => {
     expect(window.getComputedStyle(floatingItem!).getPropertyValue("-webkit-app-region")).toBe(
       "no-drag",
     );
+
+    // A marked control is itself no-drag; a marked non-interactive layer is not,
+    // so a full-window portal host never blanks the strip.
+    const regionOf = (testId: string) =>
+      window
+        .getComputedStyle(document.querySelector<HTMLElement>(`[data-testid='${testId}']`)!)
+        .getPropertyValue("-webkit-app-region");
+    expect(regionOf("scoped-handle")).toBe("no-drag");
+    expect(regionOf("floating-layer")).toBe("none");
 
     // Scrolled-out content contributes nothing: no declaration of its own and
     // no no-drag ancestor to inherit from.

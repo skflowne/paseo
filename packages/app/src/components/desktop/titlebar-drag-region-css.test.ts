@@ -7,14 +7,8 @@ const indexHtml = readFileSync(path.resolve(__dirname, "../../../public/index.ht
 
 describe("index.html app-region backstop", () => {
   it("scopes the no-drag backstop to drag-overlay surfaces and no-drag scopes", () => {
-    expect(indexHtml).toContain(`:has(> [${TITLEBAR_DRAG_OVERLAY_ATTRIBUTE}]) button`);
-    expect(indexHtml).toContain(`[${NO_DRAG_SCOPE_ATTRIBUTE}] button`);
-  });
-
-  it("does not apply the no-drag backstop globally", () => {
-    // A global backstop lets scrolled-out list content (whose layout rects pass
-    // through the titlebar strip unclipped) subtract from the drag region.
-    expect(indexHtml).not.toMatch(/^\s*button,$/m);
-    expect(indexHtml).not.toMatch(/^\s*\[tabindex\],$/m);
+    expect(indexHtml).toContain(`:has(> [${TITLEBAR_DRAG_OVERLAY_ATTRIBUTE}]) *,`);
+    expect(indexHtml).toContain(`[${NO_DRAG_SCOPE_ATTRIBUTE}],`);
+    expect(indexHtml).toContain(`[${NO_DRAG_SCOPE_ATTRIBUTE}] *`);
   });
 });
