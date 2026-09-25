@@ -1,13 +1,17 @@
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { i18n as testI18n } from "@/i18n/i18next";
 import { WindowChromeProvider } from "@/utils/desktop-window";
+import { DesktopWindowControls } from "./window-controls";
 import { TitlebarDragRegion } from "./titlebar-drag-region";
 
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
-// The browser project compiles JSX with the classic runtime; WindowChromeProvider's
-// module relies on the automatic runtime and has no `React` binding of its own.
-(globalThis as Record<string, unknown>).React = React;
+// Load translations so window controls expose their real accessible names.
+void testI18n;
+
+// App sources compile against the classic JSX runtime, which expects React on the global.
+beforeEach(() => vi.stubGlobal("React", React));
 
 // Electron detection runs off the real `window.paseoDesktop` bridge the
 // desktop preload installs — no module mocks. Every bridge field is optional,
@@ -106,6 +110,31 @@ function Scenario() {
   );
 }
 
+/** A Windows desktop bridge (custom window controls) whose maximized state the test drives. */
+function installCustomWindowsBridge(): { setMaximized: (next: boolean) => Promise<void> } {
+  let isMaximized = false;
+  let notifyResized: ((event: unknown) => void) | undefined;
+  window.paseoDesktop = {
+    windowChromeMode: "custom-windows",
+    window: {
+      getCurrentWindow: () => ({
+        isFullscreen: async () => false,
+        isMaximized: async () => isMaximized,
+        onResized: async <TEvent,>(handler: (event: TEvent) => void) => {
+          notifyResized = handler as (event: unknown) => void;
+          return () => {};
+        },
+      }),
+    },
+  };
+  return {
+    setMaximized: async (next) => {
+      isMaximized = next;
+      await act(async () => notifyResized?.(undefined));
+    },
+  };
+}
+
 const roots: Root[] = [];
 
 afterEach(() => {
@@ -175,21 +204,7 @@ describe("TitlebarDragRegion draggable-region cascade", () => {
   });
 
   it("drops the top-edge resizer while the window is maximized", async () => {
-    let isMaximized = false;
-    let notifyResized: ((event: unknown) => void) | undefined;
-    window.paseoDesktop = {
-      windowChromeMode: "custom-windows",
-      window: {
-        getCurrentWindow: () => ({
-          isFullscreen: async () => false,
-          isMaximized: async () => isMaximized,
-          onResized: async <TEvent,>(handler: (event: TEvent) => void) => {
-            notifyResized = handler as (event: unknown) => void;
-            return () => {};
-          },
-        }),
-      },
-    };
+    const bridge = installCustomWindowsBridge();
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -211,8 +226,38 @@ describe("TitlebarDragRegion draggable-region cascade", () => {
     await expect.poll(regions).toEqual(["drag", "no-drag"]);
 
     // Maximized: nothing to resize, so the whole top edge must drag (restore-by-drag).
-    isMaximized = true;
-    await act(async () => notifyResized?.(undefined));
+    await bridge.setMaximized(true);
     await expect.poll(regions).toEqual(["drag"]);
+  });
+
+  it("keeps the real window controls no-drag so they stay clickable over a strip", async () => {
+    installCustomWindowsBridge();
+    const style = document.createElement("style");
+    style.textContent = await loadBackstopCss();
+    document.head.appendChild(style);
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    roots.push(root);
+    await act(async () => {
+      root.render(
+        <WindowChromeProvider>
+          <DesktopWindowControls />
+        </WindowChromeProvider>,
+      );
+    });
+
+    // The scope marker must reach the DOM through react-native-web, not just the JSX.
+    await expect
+      .poll(() => container.querySelector("[data-paseo-no-drag-scope] [role='button']"))
+      .not.toBeNull();
+    const buttons = [...container.querySelectorAll<HTMLElement>("[role='button']")];
+    expect(buttons).toHaveLength(3);
+    for (const button of buttons) {
+      expect(window.getComputedStyle(button).getPropertyValue("-webkit-app-region")).toBe(
+        "no-drag",
+      );
+    }
   });
 });
