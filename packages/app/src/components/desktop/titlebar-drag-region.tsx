@@ -1,6 +1,7 @@
 import React from "react";
 import { getIsElectronRuntime } from "@/constants/layout";
 import { isNative } from "@/constants/platform";
+import { useCustomDesktopWindowControls } from "@/utils/desktop-window";
 
 /**
  * VS Code-style titlebar drag region for Electron.
@@ -12,10 +13,13 @@ import { isNative } from "@/constants/platform";
  *
  * VS Code's drag region is a static DOM element — no z-index, no pointer-events,
  * no state, no event listeners. Interactive elements get no-drag from their own
- * CSS (scoped backstop in index.html). The drag region never re-renders.
+ * CSS (scoped backstop in index.html). The overlay itself is static; only the
+ * resizer follows window state.
  *
  * The resizer is Windows/Linux only (titlebarpart.css:249 scopes to .windows/.linux).
- * On macOS, Electron handles edge resize natively.
+ * On macOS, Electron handles edge resize natively. It is also dropped while the
+ * window is maximized or fullscreen (VS Code hides it the same way): there is no
+ * edge to resize, and a no-drag strip at the top edge would block drag-to-restore.
  *
  * The overlay carries `data-paseo-drag-overlay`. Chromium collects draggable
  * regions from UNCLIPPED layout bounds, so content scrolled inside a list (chat
@@ -62,16 +66,18 @@ const TOP_RESIZER_STYLE: React.CSSProperties = {
  * Place as FIRST child of any positioned container that should be draggable.
  */
 export function TitlebarDragRegion() {
+  const windowControls = useCustomDesktopWindowControls();
   if (isNative || !getIsElectronRuntime()) {
     return null;
   }
+  const showTopResizer = windowControls.visible && !windowControls.isMaximized;
 
   return (
     <>
       {/* Drag overlay — VS Code .titlebar-drag-region (titlebarpart.css:57-64) */}
       <div {...{ [TITLEBAR_DRAG_OVERLAY_ATTRIBUTE]: "true" }} style={DRAG_OVERLAY_STYLE} />
       {/* Top-edge resizer — VS Code .resizer (titlebarpart.css:249-256) */}
-      <div style={TOP_RESIZER_STYLE} />
+      {showTopResizer ? <div style={TOP_RESIZER_STYLE} /> : null}
     </>
   );
 }
